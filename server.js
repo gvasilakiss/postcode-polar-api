@@ -11,6 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Trust proxy for reverse proxies (Railway, Render, etc.)
+// This is required for rate limiting to work correctly
+app.set('trust proxy', 1);
+
 // Store postcode data in memory for fast lookups
 let postcodeData = new Map();
 let isReady = false;
