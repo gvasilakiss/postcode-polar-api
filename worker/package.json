@@ -1,0 +1,19 @@
+{
+    "name": "postcode-polar-worker",
+    "version": "1.0.0",
+    "description": "Cloudflare Worker API for POLAR4 postcode lookups",
+    "main": "src/index.js",
+    "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy",
+        "db:create": "wrangler d1 create postcode-polar-db",
+        "db:init": "wrangler d1 execute postcode-polar-db --file=./schema.sql",
+        "db:import": "node import-data.js"
+    },
+    "dependencies": {
+        "hono": "^4.0.0"
+    },
+    "devDependencies": {
+        "wrangler": "^4.56.0"
+    }
+}

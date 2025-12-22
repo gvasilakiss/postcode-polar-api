@@ -1,0 +1,9 @@
+name = "postcode-polar-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "postcode-polar-db"
+database_id = "5809cb9d-1c90-47f5-8efc-bb95c6cd5c42"  # Replace after running: wrangler d1 create postcode-polar-db
