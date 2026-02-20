@@ -11,7 +11,7 @@
         "db:import": "node import-data.js"
     },
     "dependencies": {
-        "hono": "^4.0.0"
+        "hono": "^4.11.10"
     },
     "devDependencies": {
         "wrangler": "^4.56.0"
