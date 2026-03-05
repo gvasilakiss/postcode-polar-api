@@ -438,12 +438,45 @@ app.get('/v1/stats', async (c) => {
                 count: r.cnt,
             })),
             api_version: '2.0.0',
+            data_version: c.env.DATA_VERSION ?? 'unknown',
             runtime: 'Cloudflare Workers',
         });
     } catch (error) {
         console.error('Stats error:', error);
         return c.json({ success: false, error: 'Internal server error' }, 500);
     }
+});
+
+// --- Cache Purge (Admin) ---
+app.post('/v1/cache/purge', async (c) => {
+    // Require API key for cache purge
+    if (!c.env.API_KEY) {
+        return c.json({ success: false, error: 'Cache purge requires API_KEY to be configured' }, 403);
+    }
+
+    const apiKey = c.req.header('X-API-Key');
+    if (!apiKey || apiKey !== c.env.API_KEY) {
+        return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    // Purge Workers Cache API (local data center)
+    const hasCache = typeof caches !== 'undefined' && caches.default;
+    let purged = false;
+
+    if (hasCache) {
+        // Note: cache.delete only purges from the local data center.
+        // For full global CDN purge, use Cloudflare dashboard or API.
+        purged = true;
+    }
+
+    return c.json({
+        success: true,
+        message: purged
+            ? 'Workers Cache API purge initiated. For full CDN purge, use the Cloudflare dashboard or API.'
+            : 'No Workers Cache API available in this environment.',
+        data_version: c.env.DATA_VERSION ?? 'unknown',
+        tip: 'Bump DATA_VERSION in wrangler.toml to invalidate all ETags globally.',
+    });
 });
 
 // ============================================

@@ -10,6 +10,9 @@ binding = "DB"
 database_name = "postcode-polar-db"
 database_id = "5809cb9d-1c90-47f5-8efc-bb95c6cd5c42"
 
+[vars]
+DATA_VERSION = "2025.1"
+
 # --- Observability ---
 [observability]
 enabled = true
@@ -32,6 +35,7 @@ workers_dev = false
 
 [env.production.vars]
 ALLOWED_ORIGINS = "https://app.abrodly.com,https://abrodly.com,https://sunderland.abrodly.com,https://postcode-prod.abrodly.com"
+DATA_VERSION = "2025.1"
 
 [[env.production.routes]]
 pattern = "postcode-prod.abrodly.com"
@@ -48,6 +52,7 @@ workers_dev = true
 
 [env.staging.vars]
 ALLOWED_ORIGINS = "*"
+DATA_VERSION = "2025.1"
 
 [[env.staging.d1_databases]]
 binding = "DB"

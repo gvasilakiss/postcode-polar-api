@@ -2,29 +2,38 @@ import type { Context, Next } from 'hono';
 import type { Env } from '../types';
 
 /**
- * Cache middleware for Cloudflare Workers.
+ * Aggressive cache middleware for Cloudflare Workers.
  *
- * - Sets `Cache-Control: public, max-age=86400` on 200 responses
- * - Generates and checks `ETag` headers for conditional requests (304 Not Modified)
- * - Uses Cloudflare Cache API to cache D1 query results at the edge (when available)
+ * Since POLAR4 data changes ~once per year, we use aggressive caching:
+ *
+ * - Browser:  30 days + immutable (no revalidation on back/forward)
+ * - CDN edge: 1 year via CDN-Cache-Control (Cloudflare-specific)
+ * - ETag:     versioned with DATA_VERSION env var for cache busting
+ * - stale-while-revalidate: serves stale content instantly while revalidating
  */
 
-const CACHE_MAX_AGE = 86400; // 24 hours
+// Browser cache: 30 days
+const BROWSER_MAX_AGE = 2592000;
+
+// CDN edge cache: 1 year
+const CDN_MAX_AGE = 31536000;
 
 /**
- * Generate a simple hash for ETag from response body.
+ * Generate a versioned ETag from response body + DATA_VERSION.
+ * When you bump DATA_VERSION after a CSV re-import, all ETags change
+ * and clients/CDN will fetch fresh data.
  */
-async function generateETag(body: string): Promise<string> {
+async function generateETag(body: string, dataVersion: string): Promise<string> {
     const encoder = new TextEncoder();
-    const data = encoder.encode(body);
+    const data = encoder.encode(`${dataVersion}:${body}`);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return `"${hashHex.substring(0, 16)}"`;
+    return `"${dataVersion}-${hashHex.substring(0, 16)}"`;
 }
 
 /**
- * Hono middleware that adds caching headers and ETag support.
+ * Hono middleware that adds aggressive caching headers and ETag support.
  */
 export async function cacheMiddleware(c: Context<{ Bindings: Env }>, next: Next): Promise<void | Response> {
     // Only cache GET requests
@@ -39,6 +48,8 @@ export async function cacheMiddleware(c: Context<{ Bindings: Env }>, next: Next)
         await next();
         return;
     }
+
+    const dataVersion = c.env.DATA_VERSION ?? '1';
 
     // Try Cloudflare Cache API (only available in Workers runtime)
     const hasCache = typeof caches !== 'undefined' && caches.default;
@@ -67,7 +78,7 @@ export async function cacheMiddleware(c: Context<{ Bindings: Env }>, next: Next)
     // Only cache successful JSON responses
     if (c.res.status === 200) {
         const responseBody = await c.res.clone().text();
-        const etag = await generateETag(responseBody);
+        const etag = await generateETag(responseBody, dataVersion);
 
         // Check If-None-Match
         const clientETag = c.req.header('If-None-Match');
@@ -76,10 +87,24 @@ export async function cacheMiddleware(c: Context<{ Bindings: Env }>, next: Next)
             return;
         }
 
-        // Create cacheable response with headers
+        // Create cacheable response with aggressive headers
         const headers = new Headers(c.res.headers);
-        headers.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}`);
+
+        // Browser cache: 30 days, immutable (skip revalidation on navigation),
+        // stale-while-revalidate (serve stale for 1 day while refreshing)
+        headers.set(
+            'Cache-Control',
+            `public, max-age=${BROWSER_MAX_AGE}, stale-while-revalidate=86400, immutable`
+        );
+
+        // CDN edge cache: 1 year (Cloudflare-specific, overrides Cache-Control for edge)
+        headers.set('CDN-Cache-Control', `public, max-age=${CDN_MAX_AGE}`);
+
+        // Versioned ETag for cache busting on data updates
         headers.set('ETag', etag);
+
+        // Data version header for transparency
+        headers.set('X-Data-Version', dataVersion);
 
         const cacheableResponse = new Response(responseBody, {
             status: 200,

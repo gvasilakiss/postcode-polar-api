@@ -87,16 +87,18 @@ function createMockDB() {
     };
 }
 
-function createEnv() {
+function createEnv(overrides?: { API_KEY?: string }) {
     return {
         DB: createMockDB() as unknown as D1Database,
         ALLOWED_ORIGINS: '*',
+        DATA_VERSION: '2025.1',
+        ...overrides,
     };
 }
 
 // Helper to make requests against the Hono app
-async function makeRequest(path: string, options?: RequestInit) {
-    const env = createEnv();
+async function makeRequest(path: string, options?: RequestInit, envOverrides?: { API_KEY?: string }) {
+    const env = createEnv(envOverrides);
     const req = new Request(`http://localhost${path}`, options);
     return app.fetch(req, env, { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as unknown as ExecutionContext);
 }
@@ -274,13 +276,45 @@ describe('GET /v1/postcode/search', () => {
 // Stats Endpoint
 // ============================================
 describe('GET /v1/stats', () => {
-    it('returns stats with postcode count and countries', async () => {
+    it('returns stats with postcode count, countries, and data version', async () => {
         const res = await makeRequest('/v1/stats');
         expect(res.status).toBe(200);
         const data = await res.json() as Record<string, unknown>;
         expect(data.success).toBe(true);
         expect(data.api_version).toBe('2.0.0');
+        expect(data.data_version).toBe('2025.1');
         expect(data.total_postcodes).toBeDefined();
+    });
+});
+
+// ============================================
+// Cache Purge
+// ============================================
+describe('POST /v1/cache/purge', () => {
+    it('returns 403 when no API_KEY is configured', async () => {
+        const res = await makeRequest('/v1/cache/purge', { method: 'POST' });
+        expect(res.status).toBe(403);
+    });
+
+    it('returns 401 with wrong API key', async () => {
+        const res = await makeRequest(
+            '/v1/cache/purge',
+            { method: 'POST', headers: { 'X-API-Key': 'wrong-key' } },
+            { API_KEY: 'correct-key' }
+        );
+        expect(res.status).toBe(401);
+    });
+
+    it('returns 200 with correct API key', async () => {
+        const res = await makeRequest(
+            '/v1/cache/purge',
+            { method: 'POST', headers: { 'X-API-Key': 'my-secret' } },
+            { API_KEY: 'my-secret' }
+        );
+        expect(res.status).toBe(200);
+        const data = await res.json() as Record<string, unknown>;
+        expect(data.success).toBe(true);
+        expect(data.data_version).toBe('2025.1');
     });
 });
 

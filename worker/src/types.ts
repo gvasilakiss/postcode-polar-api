@@ -6,6 +6,7 @@ export interface Env {
     DB: D1Database;
     ALLOWED_ORIGINS?: string; // comma-separated allowed CORS origins
     API_KEY?: string;         // optional API key for private usage
+    DATA_VERSION?: string;    // data version for cache busting (e.g., "2025.1")
 }
 
 // ============================================
