@@ -1,86 +1,130 @@
-# Cloudflare Workers Deployment
+# Postcode POLAR4 API — Cloudflare Worker
 
-Deploy the Postcode POLAR4 API to Cloudflare Workers with D1 database.
+Production-ready API for POLAR4 postcode lookups, running on Cloudflare Workers with D1.
 
-## Prerequisites
+**Live**: `postcode-prod.abrodly.com`
 
-- [Node.js](https://nodejs.org/) 18+
-- [Cloudflare account](https://dash.cloudflare.com/sign-up) (free)
+## Features
 
-## Deployment Steps
+- ✅ TypeScript + Hono framework
+- ✅ Single & batch postcode lookups
+- ✅ Extended data (POLAR3, TUNDRA, Adult HE, MSOA/LSOA, Country)
+- ✅ Fuzzy/partial postcode matching
+- ✅ Autocomplete search
+- ✅ Edge caching with ETag support
+- ✅ Environment-specific CORS
+- ✅ Optional API key authentication
+- ✅ Structured JSON logging
+- ✅ Cloudflare D1 (SQLite) backend
+- ✅ API versioning (`/v1/`)
+- ✅ 39 tests (Vitest)
 
-### 1. Install Dependencies
+## Quick Start
 
 ```bash
 cd worker
 npm install
+npm run dev          # Local server at http://localhost:8787
+npm run typecheck    # TypeScript check
+npm run test         # Run all tests
 ```
 
-### 2. Login to Cloudflare
+## API Endpoints
+
+### Lookup POLAR4 (single)
+
+```
+GET /v1/postcode/:postcode
+GET /v1/postcode/:postcode?include=extended
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "postcode": "AB10 1AA",
+  "polar4": 2,
+  "polar_description": "Quintile 2 - Areas with low young participation in higher education",
+  "match_type": "exact"
+}
+```
+
+Extended response adds: `polar3`, `tundra_msoa`, `tundra_lsoa`, `adult_he`, `msoa_name`, `lsoa_name`, `country`, `status`.
+
+### Batch Lookup (up to 50)
+
+```
+POST /v1/postcodes/batch
+POST /v1/postcodes/batch?include=extended
+```
+
+**Body:**
+```json
+{ "postcodes": ["AB10 1AA", "SW1A 1AA", "OX1 2JD"] }
+```
+
+### Autocomplete Search
+
+```
+GET /v1/postcode/search?q=AB10
+```
+
+### Stats
+
+```
+GET /v1/stats
+```
+
+### Health & Readiness
+
+```
+GET /health
+GET /ready
+```
+
+### Backward Compatibility
+
+Old routes (`/postcode/:postcode`) redirect 301 to `/v1/postcode/:postcode`.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins |
+| `API_KEY` | — | Optional API key (require `X-API-Key` header) |
+
+## Deployment
 
 ```bash
-npx wrangler login
+# Staging (workers.dev)
+npm run deploy:staging
+
+# Production (custom domain)
+npm run deploy:production
 ```
 
-This opens a browser for authentication.
-
-### 3. Create D1 Database
+### Database Setup
 
 ```bash
-npx wrangler d1 create postcode-polar-db
+# 1. Initialize schema (drops + recreates table)
+wrangler d1 execute postcode-polar-db --remote --file=./schema.sql
+
+# 2. Generate import SQL from CSV
+node import-data.js
+
+# 3. Import data
+wrangler d1 execute postcode-polar-db --remote --file=./import.sql
 ```
 
-**Copy the `database_id` from the output** and update `wrangler.toml`:
+## POLAR4 Quintiles
 
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "postcode-polar-db"
-database_id = "YOUR_DATABASE_ID_HERE"  # <-- Paste here
-```
-
-### 4. Initialize Database Schema
-
-```bash
-npx wrangler d1 execute postcode-polar-db --file=./schema.sql
-```
-
-### 5. Import Postcode Data
-
-Generate and import the SQL:
-
-```bash
-node import-data.js > import.sql
-npx wrangler d1 execute postcode-polar-db --file=./import.sql
-```
-
-⚠️ **Note**: This may take a few minutes for large CSV files.
-
-### 6. Deploy Worker
-
-```bash
-npm run deploy
-```
-
-Your API will be live at: `https://postcode-polar-api.<your-subdomain>.workers.dev`
-
-## Test Your API
-
-```bash
-# Health check
-curl https://postcode-polar-api.<your-subdomain>.workers.dev/health
-
-# Postcode lookup
-curl https://postcode-polar-api.<your-subdomain>.workers.dev/postcode/AB101AA
-```
-
-## Local Development
-
-```bash
-npm run dev
-```
-
-This starts a local server at `http://localhost:8787`.
+| Quintile | Description |
+|----------|-------------|
+| 1 | Lowest HE participation (most disadvantaged) |
+| 2 | Low HE participation |
+| 3 | Medium HE participation |
+| 4 | High HE participation |
+| 5 | Highest HE participation (most advantaged) |
 
 ## Free Tier Limits
 

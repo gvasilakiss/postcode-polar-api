@@ -1,5 +1,5 @@
 name = "postcode-polar-api"
-main = "src/index.js"
+main = "src/index.ts"
 compatibility_date = "2024-01-01"
 workers_dev = true
 preview_urls = true
@@ -10,8 +10,9 @@ binding = "DB"
 database_name = "postcode-polar-db"
 database_id = "5809cb9d-1c90-47f5-8efc-bb95c6cd5c42"
 
+# --- Observability ---
 [observability]
-enabled = false
+enabled = true
 head_sampling_rate = 1
 
 [observability.logs]
@@ -21,10 +22,35 @@ persist = true
 invocation_logs = true
 
 [observability.traces]
-enabled = false
+enabled = true
 persist = true
 head_sampling_rate = 1
 
-[[routes]]
+# --- Production Environment ---
+[env.production]
+workers_dev = false
+
+[env.production.vars]
+ALLOWED_ORIGINS = "https://app.abrodly.com,https://abrodly.com,https://sunderland.abrodly.com,https://postcode-prod.abrodly.com
+"
+
+[[env.production.routes]]
 pattern = "postcode-prod.abrodly.com"
 custom_domain = true
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "postcode-polar-db"
+database_id = "5809cb9d-1c90-47f5-8efc-bb95c6cd5c42"
+
+# --- Staging Environment ---
+[env.staging]
+workers_dev = true
+
+[env.staging.vars]
+ALLOWED_ORIGINS = "*"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "postcode-polar-db"
+database_id = "5809cb9d-1c90-47f5-8efc-bb95c6cd5c42"

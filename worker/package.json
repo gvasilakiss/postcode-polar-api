@@ -1,19 +1,27 @@
 {
     "name": "postcode-polar-worker",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Cloudflare Worker API for POLAR4 postcode lookups",
-    "main": "src/index.js",
+    "main": "src/index.ts",
     "scripts": {
         "dev": "wrangler dev",
         "deploy": "wrangler deploy",
+        "deploy:staging": "wrangler deploy --env staging",
+        "deploy:production": "wrangler deploy --env production",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "db:create": "wrangler d1 create postcode-polar-db",
-        "db:init": "wrangler d1 execute postcode-polar-db --file=./schema.sql",
+        "db:init": "wrangler d1 execute postcode-polar-db --file=./schema.sql --remote",
         "db:import": "node import-data.js"
     },
     "dependencies": {
         "hono": "^4.12.4"
     },
     "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250214.0",
+        "typescript": "^5.7.0",
+        "vitest": "^3.0.0",
         "wrangler": "^4.59.1"
     }
 }

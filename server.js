@@ -1,3 +1,7 @@
+// ⚠️ DEPRECATED: This Express version is for local development/testing only.
+// Production deployment uses the Cloudflare Worker in worker/
+// See worker/README.md for deployment instructions.
+
 const express = require('express');
 const fs = require('fs');
 const csv = require('csv-parser');
