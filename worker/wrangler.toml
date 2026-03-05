@@ -31,8 +31,7 @@ head_sampling_rate = 1
 workers_dev = false
 
 [env.production.vars]
-ALLOWED_ORIGINS = "https://app.abrodly.com,https://abrodly.com,https://sunderland.abrodly.com,https://postcode-prod.abrodly.com
-"
+ALLOWED_ORIGINS = "https://app.abrodly.com,https://abrodly.com,https://sunderland.abrodly.com,https://postcode-prod.abrodly.com"
 
 [[env.production.routes]]
 pattern = "postcode-prod.abrodly.com"
