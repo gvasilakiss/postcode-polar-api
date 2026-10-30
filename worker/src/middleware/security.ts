@@ -2,10 +2,19 @@ import { cors } from 'hono/cors';
 import type { Context, Next, MiddlewareHandler } from 'hono';
 import type { Env } from '../types';
 
+const TENANT_ORIGIN = /^https:\/\/[a-z0-9-]+\.abrodly\.com$/i;
+
+/** Resolve the Access-Control-Allow-Origin value; empty string means not allowed. */
+export function resolveAllowedOrigin(origin: string | undefined, allowed: string[]): string {
+    if (!origin) return '';
+    return allowed.includes(origin) || TENANT_ORIGIN.test(origin) ? origin : '';
+}
+
 /**
  * Create a dynamic CORS middleware that reads allowed origins from environment.
  *
- * - If ALLOWED_ORIGINS is set: only those origins are allowed
+ * - If ALLOWED_ORIGINS is set: only those origins are allowed, plus any
+ *   https://*.abrodly.com tenant subdomain (new tenants need no config change)
  * - If ALLOWED_ORIGINS is not set: all origins allowed (development mode)
  */
 export function createCorsMiddleware(): MiddlewareHandler<{ Bindings: Env }> {
@@ -15,7 +24,7 @@ export function createCorsMiddleware(): MiddlewareHandler<{ Bindings: Env }> {
         if (allowedOrigins && allowedOrigins !== '*') {
             const origins = allowedOrigins.split(',').map(o => o.trim());
             const corsHandler = cors({
-                origin: origins,
+                origin: (origin) => resolveAllowedOrigin(origin, origins),
                 allowMethods: ['GET', 'POST', 'OPTIONS'],
                 allowHeaders: ['Content-Type', 'X-API-Key'],
                 maxAge: 86400,
