@@ -16,12 +16,12 @@
         "db:import": "node import-data.js"
     },
     "dependencies": {
-        "hono": "^4.12.7"
+        "hono": "^4.12.25"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20250214.0",
         "typescript": "^5.7.0",
-        "vitest": "^3.0.0",
-        "wrangler": "^4.59.1"
+        "vitest": "^3.2.6",
+        "wrangler": "^4.103.0"
     }
 }
