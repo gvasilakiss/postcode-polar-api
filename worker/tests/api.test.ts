@@ -87,18 +87,18 @@ function createMockDB() {
     };
 }
 
-function createEnv(overrides?: { API_KEY?: string }) {
+function createEnv(overrides?: { API_KEY?: string }, allowedOrigins = '*') {
     return {
         DB: createMockDB() as unknown as D1Database,
-        ALLOWED_ORIGINS: '*',
+        ALLOWED_ORIGINS: allowedOrigins,
         DATA_VERSION: '2025.1',
         ...overrides,
     };
 }
 
 // Helper to make requests against the Hono app
-async function makeRequest(path: string, options?: RequestInit, envOverrides?: { API_KEY?: string }) {
-    const env = createEnv(envOverrides);
+async function makeRequest(path: string, options?: RequestInit, envOverrides?: { API_KEY?: string }, allowedOrigins?: string) {
+    const env = createEnv(envOverrides, allowedOrigins);
     const req = new Request(`http://localhost${path}`, options);
     return app.fetch(req, env, { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as unknown as ExecutionContext);
 }
@@ -328,5 +328,33 @@ describe('404 Handler', () => {
         const data = await res.json() as Record<string, unknown>;
         expect(data.success).toBe(false);
         expect(data.error).toBe('Not Found');
+    });
+});
+
+// ============================================
+// CORS origin allowlist
+// ============================================
+describe('CORS origins', () => {
+    const preflight = (origin: string) =>
+        makeRequest('/health', {
+            method: 'OPTIONS',
+            headers: { Origin: origin, 'Access-Control-Request-Method': 'GET' },
+        }, undefined, 'https://app.abrodly.com');
+
+    it('allows listed origins', async () => {
+        const res = await preflight('https://app.abrodly.com');
+        expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://app.abrodly.com');
+    });
+
+    it('allows any https tenant subdomain of abrodly.com', async () => {
+        const res = await preflight('https://crete.abrodly.com');
+        expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://crete.abrodly.com');
+    });
+
+    it('rejects look-alike and non-https origins', async () => {
+        for (const origin of ['https://abrodly.com.evil.com', 'http://crete.abrodly.com', 'https://evil.com']) {
+            const res = await preflight(origin);
+            expect(res.headers.get('Access-Control-Allow-Origin') || '').toBe('');
+        }
     });
 });
