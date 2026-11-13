@@ -16,7 +16,7 @@
         "db:import": "node import-data.js"
     },
     "dependencies": {
-        "hono": "^4.12.25"
+        "hono": "^4.13.16"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^5.20261030.1",
